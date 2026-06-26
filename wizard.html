@@ -978,6 +978,7 @@
       });
       document.getElementById("backBtn").disabled = step === 1;
       document.getElementById("nextBtn").textContent = "下一步";
+      document.getElementById("nextBtn").style.display = step === 3 ? "none" : "";
       if (step === 2) render();
       if (step === 3) renderExport();
     }
