@@ -12,7 +12,9 @@ A single-file local tool for replacing image URLs in WeChat article HTML/SVG wit
 
 ## Usage
 
-Open `index.html` in a browser.
+Open `index.html` in a browser for the standard two-column workbench.
+
+Open `wizard.html` for the experimental three-step wizard flow.
 
 1. Paste the original HTML into the left input area, then click `解析原图位点`.
 2. Paste the new image links or image HTML into the right input area, then click `解析新图链接`.

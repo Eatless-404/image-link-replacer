@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>图片链接替换向导</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --panel: #fffdf8;
+      --ink: #24231f;
+      --muted: #6d685f;
+      --line: #d9d1c5;
+      --soft: #eee8dc;
+      --accent: #0f766e;
+      --accent-soft: #dcefeb;
+      --danger: #b42318;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, textarea, input { font: inherit; }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:hover { border-color: #9b9387; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .danger { color: var(--danger); border-color: #e0b3ad; background: #fff9f8; }
+
+    .app {
+      height: 100%;
+      min-width: 1080px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+    }
+
+    header {
+      height: 64px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .steps {
+      height: 72px;
+      border-bottom: 1px solid var(--line);
+      background: #faf8f3;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+    }
+
+    .step {
+      border: 0;
+      border-radius: 0;
+      background: var(--panel);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      text-align: left;
+    }
+
+    .step.active {
+      box-shadow: inset 0 -3px 0 var(--accent);
+      background: #fbfffd;
+    }
+
+    .step.done .badge {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .badge {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      font-weight: 700;
+    }
+
+    .stepText strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .stepText span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .view {
+      min-height: 0;
+      display: none;
+      overflow: hidden;
+    }
+
+    .view.active { display: grid; }
+
+    .importView {
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .importPane {
+      min-width: 0;
+      background: var(--panel);
+      padding: 16px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    .paneHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .paneHead h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .paneHead span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    textarea {
+      width: 100%;
+      resize: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+      background: #fff;
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow: auto;
+    }
+
+    .importActions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .fileLabel {
+      border: 1px dashed #b8afa2;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .fileLabel input { display: none; }
+
+    .pairView {
+      grid-template-rows: auto 1fr;
+      background: var(--line);
+      gap: 1px;
+    }
+
+    .pairStatus {
+      background: var(--panel);
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 260px 220px;
+      gap: 10px;
+    }
+
+    .selectedBox {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 10px;
+      padding: 8px;
+      align-items: center;
+    }
+
+    .selectedThumb {
+      width: 70px;
+      height: 70px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background:
+        linear-gradient(45deg, #ececec 25%, transparent 25%),
+        linear-gradient(-45deg, #ececec 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ececec 75%),
+        linear-gradient(-45deg, transparent 75%, #ececec 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .selectedThumb img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .selectedText {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .selectedText strong { font-size: 13px; }
+
+    .selectedText span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      word-break: break-all;
+    }
+
+    .pairButtons {
+      display: grid;
+      gap: 8px;
+    }
+
+    .progressBox {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+      align-content: center;
+    }
+
+    .track {
+      height: 9px;
+      background: #e8e1d6;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+    }
+
+    .progressText {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .galleries {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      background: var(--panel);
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      overflow: hidden;
+    }
+
+    .panelHead {
+      height: 44px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panelHead h2 {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .count {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .filters {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .filters input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    .seg {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .seg button {
+      padding: 5px 9px;
+      font-size: 12px;
+    }
+
+    .seg button.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: #075f58;
+    }
+
+    .gallery {
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      align-content: start;
+    }
+
+    .imageCard {
+      min-width: 0;
+      height: 360px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      display: grid;
+      grid-template-rows: 250px 1fr;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .imageCard:hover { border-color: #9b9387; }
+    .imageCard.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft) inset; }
+    .imageCard.mapped { border-color: #84b7ad; background: #fbfffd; }
+
+    .preview {
+      width: 100%;
+      height: 250px;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(45deg, #ececec 25%, transparent 25%),
+        linear-gradient(-45deg, #ececec 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ececec 75%),
+        linear-gradient(-45deg, transparent 75%, #ececec 75%);
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .preview img {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .cardMeta {
+      min-width: 0;
+      padding: 8px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 4px;
+    }
+
+    .cardTop {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cardPath {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-content: start;
+      overflow: hidden;
+    }
+
+    .tag {
+      max-width: 100%;
+      border: 1px solid #e1d9cc;
+      border-radius: 999px;
+      background: #f8f5ef;
+      padding: 2px 6px;
+      color: #5f5a53;
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .exportView {
+      grid-template-columns: 1fr 320px;
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .resultPane {
+      min-width: 0;
+      background: var(--panel);
+      padding: 16px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+    }
+
+    .resultPane textarea {
+      min-height: 0;
+    }
+
+    .summaryPane {
+      background: var(--panel);
+      padding: 16px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .summaryStats {
+      display: grid;
+      gap: 8px;
+    }
+
+    .summaryStat {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 12px;
+    }
+
+    .summaryStat b {
+      display: block;
+      font-size: 24px;
+    }
+
+    .summaryStat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      grid-template-rows: auto 1fr;
+      background: rgba(30, 29, 27, .84);
+    }
+
+    .viewer.open { display: grid; }
+
+    .viewerBar {
+      height: 48px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 12px;
+    }
+
+    .viewerTitle {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .viewerActions {
+      display: flex;
+      gap: 8px;
+      flex: none;
+    }
+
+    .viewerStage {
+      overflow: auto;
+      padding: 24px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .viewerStage img {
+      display: block;
+      background:
+        linear-gradient(45deg, #ececec 25%, transparent 25%),
+        linear-gradient(-45deg, #ececec 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ececec 75%),
+        linear-gradient(-45deg, transparent 75%, #ececec 75%);
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+      box-shadow: 0 10px 36px rgba(0,0,0,.35);
+      transform-origin: top center;
+    }
+
+    .viewerStage img.fit {
+      max-width: 96%;
+      max-height: calc(100vh - 100px);
+      width: auto;
+      height: auto;
+    }
+
+    .viewerStage img.actual {
+      max-width: none;
+      max-height: none;
+    }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      max-width: 360px;
+      background: #222;
+      color: #fff;
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .16s, transform .16s;
+      pointer-events: none;
+      z-index: 70;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>图片链接替换向导</h1>
+        <div class="sub">三步版试验：导入、配对、导出</div>
+      </div>
+      <div class="toolbar">
+        <button id="backBtn">上一步</button>
+        <button id="nextBtn" class="primary">下一步</button>
+      </div>
+    </header>
+
+    <nav class="steps">
+      <button class="step active" data-step="1">
+        <span class="badge">1</span>
+        <span class="stepText"><strong>导入</strong><span>粘贴原 HTML 与新图片链接</span></span>
+      </button>
+      <button class="step" data-step="2">
+        <span class="badge">2</span>
+        <span class="stepText"><strong>配对</strong><span>左图对应右图，逐组确认</span></span>
+      </button>
+      <button class="step" data-step="3">
+        <span class="badge">3</span>
+        <span class="stepText"><strong>导出</strong><span>应用替换并复制结果</span></span>
+      </button>
+    </nav>
+
+    <section class="view importView active" id="view1">
+      <div class="importPane">
+        <div class="paneHead">
+          <h2>原 HTML</h2>
+          <span id="oldSummary">未解析</span>
+        </div>
+        <textarea id="oldHtmlInput" spellcheck="false" placeholder="粘贴原 HTML，或上传 .html 文件"></textarea>
+        <div class="importActions">
+          <label class="fileLabel">上传 HTML<input id="oldFileInput" type="file" accept=".html,.htm,.txt"></label>
+          <button id="parseOldBtn">解析原图位点</button>
+        </div>
+      </div>
+
+      <div class="importPane">
+        <div class="paneHead">
+          <h2>新图片链接</h2>
+          <span id="newSummary">未解析</span>
+        </div>
+        <textarea id="newLinksInput" spellcheck="false" placeholder="粘贴公众号图片链接，或粘贴包含 img 的整段代码"></textarea>
+        <div class="importActions">
+          <label class="fileLabel">上传文本<input id="newFileInput" type="file" accept=".txt,.html,.htm"></label>
+          <button id="parseNewBtn">解析新图链接</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view pairView" id="view2">
+      <div class="pairStatus">
+        <div class="selectedBox">
+          <div class="selectedThumb" id="selectedOldThumb"></div>
+          <div class="selectedText">
+            <strong>已选原图位点</strong>
+            <span id="selectedOldText">点击左侧图片</span>
+          </div>
+        </div>
+        <div class="selectedBox">
+          <div class="selectedThumb" id="selectedNewThumb"></div>
+          <div class="selectedText">
+            <strong>已选新图链接</strong>
+            <span id="selectedNewText">点击右侧图片</span>
+          </div>
+        </div>
+        <div class="pairButtons">
+          <button id="pairBtn" class="primary">建立配对</button>
+          <button id="autoPairBtn">按当前顺序配对</button>
+        </div>
+        <div class="progressBox">
+          <div class="track"><div class="bar" id="progressBar"></div></div>
+          <div class="progressText" id="progressText">载入数据后显示进度</div>
+        </div>
+      </div>
+
+      <div class="galleries">
+        <section class="panel">
+          <div class="panelHead">
+            <h2>左侧：原 HTML 图片位点</h2>
+            <span class="count" id="oldCount">0 个</span>
+          </div>
+          <div class="filters">
+            <input id="oldSearch" placeholder="搜索 line、Part、图层、page、尺寸">
+            <div class="seg" id="oldMode">
+              <button data-mode="all" class="active">全部</button>
+              <button data-mode="unmapped">未配对</button>
+              <button data-mode="mapped">已配对</button>
+            </div>
+          </div>
+          <div class="gallery" id="oldGrid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead">
+            <h2>右侧：新图片链接</h2>
+            <span class="count" id="newCount">0 个</span>
+          </div>
+          <div class="filters">
+            <input id="newSearch" placeholder="搜索序号、尺寸、链接片段">
+            <div class="seg" id="newMode">
+              <button data-mode="all" class="active">全部</button>
+              <button data-mode="unused">未使用</button>
+              <button data-mode="used">已使用</button>
+            </div>
+          </div>
+          <div class="gallery" id="newGrid"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="view exportView" id="view3">
+      <div class="resultPane">
+        <div class="paneHead">
+          <h2>替换后 HTML</h2>
+          <span id="replaceSummary">尚未生成</span>
+        </div>
+        <textarea id="outputHtml" readonly spellcheck="false"></textarea>
+      </div>
+      <aside class="summaryPane">
+        <div class="paneHead">
+          <h2>导出</h2>
+        </div>
+        <div class="summaryStats">
+          <div class="summaryStat"><b id="summaryOld">0</b><span>原图位点</span></div>
+          <div class="summaryStat"><b id="summaryNew">0</b><span>新图链接</span></div>
+          <div class="summaryStat"><b id="summaryPairs">0</b><span>已配对</span></div>
+        </div>
+        <div class="pairButtons">
+          <button id="applyBtn" class="primary">应用替换</button>
+          <button id="copyBtn" disabled>复制最新代码</button>
+          <button id="downloadBtn" disabled>下载 HTML</button>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <div class="viewer" id="viewer" aria-hidden="true">
+    <div class="viewerBar">
+      <div class="viewerTitle" id="viewerTitle"></div>
+      <div class="viewerActions">
+        <button id="viewerFitBtn">适屏</button>
+        <button id="viewerActualBtn">100% 原图</button>
+        <button id="viewerZoomInBtn">放大</button>
+        <button id="viewerZoomOutBtn">缩小</button>
+        <button id="viewerCloseBtn" class="primary">关闭</button>
+      </div>
+    </div>
+    <div class="viewerStage">
+      <img id="viewerImg" alt="">
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const state = {
+      step: 1,
+      html: "",
+      oldItems: [],
+      newItems: [],
+      pairs: new Map(),
+      selectedOld: null,
+      selectedNew: null,
+      oldMode: "all",
+      newMode: "all",
+      output: ""
+    };
+
+    let viewerZoom = 1;
+    let viewerSize = null;
+
+    const els = {
+      oldHtmlInput: document.getElementById("oldHtmlInput"),
+      newLinksInput: document.getElementById("newLinksInput"),
+      oldSummary: document.getElementById("oldSummary"),
+      newSummary: document.getElementById("newSummary"),
+      oldGrid: document.getElementById("oldGrid"),
+      newGrid: document.getElementById("newGrid"),
+      oldCount: document.getElementById("oldCount"),
+      newCount: document.getElementById("newCount"),
+      oldSearch: document.getElementById("oldSearch"),
+      newSearch: document.getElementById("newSearch"),
+      selectedOldThumb: document.getElementById("selectedOldThumb"),
+      selectedNewThumb: document.getElementById("selectedNewThumb"),
+      selectedOldText: document.getElementById("selectedOldText"),
+      selectedNewText: document.getElementById("selectedNewText"),
+      progressBar: document.getElementById("progressBar"),
+      progressText: document.getElementById("progressText"),
+      outputHtml: document.getElementById("outputHtml"),
+      replaceSummary: document.getElementById("replaceSummary"),
+      copyBtn: document.getElementById("copyBtn"),
+      downloadBtn: document.getElementById("downloadBtn"),
+      summaryOld: document.getElementById("summaryOld"),
+      summaryNew: document.getElementById("summaryNew"),
+      summaryPairs: document.getElementById("summaryPairs"),
+      viewer: document.getElementById("viewer"),
+      viewerImg: document.getElementById("viewerImg"),
+      viewerTitle: document.getElementById("viewerTitle"),
+      toast: document.getElementById("toast")
+    };
+
+    function toast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => els.toast.classList.remove("show"), 2200);
+    }
+
+    function decodeEntities(value) {
+      return value.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    }
+
+    function encodeForOriginalStyle(newUrl, oldRaw) {
+      return oldRaw.includes("&amp;") ? newUrl.replace(/&/g, "&amp;") : newUrl;
+    }
+
+    function lineNumberAt(text, index) {
+      let line = 1;
+      for (let i = 0; i < index; i += 1) {
+        if (text.charCodeAt(i) === 10) line += 1;
+      }
+      return line;
+    }
+
+    function nearestSectionPath(text, index) {
+      const start = Math.max(0, index - 7000);
+      const slice = text.slice(start, index);
+      const names = [];
+      const pattern = /<(section|g)\b[^>]*(?:name|label)=["']([^"']+)["'][^>]*>/g;
+      let match;
+      while ((match = pattern.exec(slice))) {
+        const name = match[2].trim();
+        if (!name || /ZER0N|插图/.test(name)) continue;
+        if (names[names.length - 1] !== name) names.push(name);
+      }
+      return names.slice(-4).join(" / ");
+    }
+
+    function extractSize(tag) {
+      const width = tag.match(/\b(?:width|data-w)=["']?([0-9.]+)/i);
+      const height = tag.match(/\b(?:height|data-h)=["']?([0-9.]+)/i);
+      if (width && height) return { width: Math.round(Number(width[1])), height: Math.round(Number(height[1])) };
+      const ratio = tag.match(/\bdata-ratio=["']?([0-9.]+)/i);
+      const dataW = tag.match(/\bdata-w=["']?([0-9.]+)/i);
+      if (ratio && dataW) {
+        const w = Math.round(Number(dataW[1]));
+        return { width: w, height: Math.round(w * Number(ratio[1])) };
+      }
+      return { width: 0, height: 0 };
+    }
+
+    function sizeText(size) {
+      return size?.width && size?.height ? `${size.width}x${size.height}` : "";
+    }
+
+    function shortUrl(url) {
+      const clean = String(url).split("?")[0];
+      const parts = clean.split("/");
+      return parts.slice(-2).join("/");
+    }
+
+    function parseOldHtml(html) {
+      const items = [];
+      const tagPattern = /<(image|img)\b[^>]*>/gi;
+      let tagMatch;
+      while ((tagMatch = tagPattern.exec(html))) {
+        const tag = tagMatch[0];
+        const tagStart = tagMatch.index;
+        const attrMatches = [...tag.matchAll(/\b(href|src|data-src)=["']([^"']+)["']/gi)];
+        const attrs = attrMatches.filter(m => /qpic\.cn|mmbiz|mmecoa/.test(m[2]));
+        if (!attrs.length) continue;
+
+        const primary = attrs.find(m => m[1].toLowerCase() === "href")
+          || attrs.find(m => m[1].toLowerCase() === "data-src")
+          || attrs[0];
+        const rawUrl = primary[2];
+        const url = decodeEntities(rawUrl);
+        const valueStart = tagStart + primary.index + primary[0].indexOf(primary[2]);
+        const ranges = attrs
+          .filter(m => decodeEntities(m[2]) === url)
+          .map(m => {
+            const start = tagStart + m.index + m[0].indexOf(m[2]);
+            return { rawUrl: m[2], start, end: start + m[2].length };
+          });
+        const size = extractSize(tag);
+        items.push({
+          id: `old-${items.length + 1}`,
+          index: items.length + 1,
+          tagName: tagMatch[1].toLowerCase(),
+          attr: primary[1].toLowerCase(),
+          url,
+          rawUrl,
+          ranges,
+          start: valueStart,
+          end: valueStart + rawUrl.length,
+          line: lineNumberAt(html, valueStart),
+          path: nearestSectionPath(html, tagStart),
+          size,
+          dimension: sizeText(size)
+        });
+      }
+      return items;
+    }
+
+    function parseNewLinks(text) {
+      const urls = [];
+      const sizes = new Map();
+      const tagPattern = /<img\b[^>]*>/gi;
+      let tagMatch;
+      while ((tagMatch = tagPattern.exec(text))) {
+        const tag = tagMatch[0];
+        const src = tag.match(/\bsrc=["']([^"']+)["']/i);
+        if (!src) continue;
+        const url = decodeEntities(src[1]).replace(/,$/, "");
+        if (!/qpic\.cn|mmbiz|mmecoa/.test(url)) continue;
+        if (!urls.includes(url)) urls.push(url);
+        sizes.set(url, extractSize(tag));
+      }
+
+      const urlPattern = /https?:\/\/[^"'<>\s)]+/g;
+      let match;
+      while ((match = urlPattern.exec(text))) {
+        const url = decodeEntities(match[0]).replace(/,$/, "");
+        if (!/qpic\.cn|mmbiz|mmecoa/.test(url)) continue;
+        if (!urls.includes(url)) urls.push(url);
+      }
+
+      return urls.map((url, idx) => {
+        const size = sizes.get(url) || { width: 0, height: 0 };
+        return { id: `new-${idx + 1}`, index: idx + 1, url, size, dimension: sizeText(size) };
+      });
+    }
+
+    function makeImg(url) {
+      const img = document.createElement("img");
+      img.loading = "lazy";
+      img.referrerPolicy = "no-referrer";
+      img.src = url;
+      img.addEventListener("error", () => {
+        img.replaceWith(document.createTextNode("加载失败"));
+      });
+      return img;
+    }
+
+    function setStep(step) {
+      state.step = step;
+      document.querySelectorAll(".view").forEach((el, idx) => el.classList.toggle("active", idx + 1 === step));
+      document.querySelectorAll(".step").forEach(el => {
+        const n = Number(el.dataset.step);
+        el.classList.toggle("active", n === step);
+        el.classList.toggle("done", n < step);
+      });
+      document.getElementById("backBtn").disabled = step === 1;
+      document.getElementById("nextBtn").textContent = step === 3 ? "回到配对" : "下一步";
+      if (step === 2) render();
+      if (step === 3) renderExport();
+    }
+
+    function render() {
+      renderOldGrid();
+      renderNewGrid();
+      renderSelection();
+      renderStats();
+    }
+
+    function oldMatches(item) {
+      if (state.oldMode === "mapped" && !state.pairs.has(item.id)) return false;
+      if (state.oldMode === "unmapped" && state.pairs.has(item.id)) return false;
+      const q = els.oldSearch.value.trim().toLowerCase();
+      if (!q) return true;
+      return [item.index, item.line, item.path, item.dimension, item.attr, item.url].join(" ").toLowerCase().includes(q);
+    }
+
+    function newMatches(item) {
+      const used = [...state.pairs.values()].includes(item.id);
+      if (state.newMode === "used" && !used) return false;
+      if (state.newMode === "unused" && used) return false;
+      const q = els.newSearch.value.trim().toLowerCase();
+      if (!q) return true;
+      return [item.index, item.dimension, item.url].join(" ").toLowerCase().includes(q);
+    }
+
+    function renderOldGrid() {
+      els.oldGrid.textContent = "";
+      const fragment = document.createDocumentFragment();
+      state.oldItems.filter(oldMatches).forEach(item => {
+        const card = document.createElement("article");
+        card.className = "imageCard";
+        if (state.selectedOld === item.id) card.classList.add("selected");
+        if (state.pairs.has(item.id)) card.classList.add("mapped");
+        card.title = item.url;
+        card.addEventListener("click", () => {
+          state.selectedOld = item.id;
+          renderSelection();
+          renderOldGrid();
+        });
+        card.addEventListener("dblclick", () => openViewer(item.url, `原图位点 #${item.index} · line ${item.line} · ${item.dimension}`, item.size));
+        card.innerHTML = `
+          <div class="preview"></div>
+          <div class="cardMeta">
+            <div class="cardTop"><span>#${item.index}</span><span>line ${item.line}</span></div>
+            <div class="cardPath">${escapeHtml(item.path || "未命名结构")}</div>
+            <div class="tags">
+              <span class="tag">${item.tagName}</span>
+              <span class="tag">${item.attr}</span>
+              ${item.dimension ? `<span class="tag">${item.dimension}</span>` : ""}
+            </div>
+          </div>
+        `;
+        card.querySelector(".preview").appendChild(makeImg(item.url));
+        fragment.appendChild(card);
+      });
+      els.oldGrid.appendChild(fragment);
+      els.oldCount.textContent = `${state.oldItems.length} 个`;
+    }
+
+    function renderNewGrid() {
+      els.newGrid.textContent = "";
+      const fragment = document.createDocumentFragment();
+      state.newItems.filter(newMatches).forEach(item => {
+        const used = [...state.pairs.values()].includes(item.id);
+        const card = document.createElement("article");
+        card.className = "imageCard";
+        if (state.selectedNew === item.id) card.classList.add("selected");
+        if (used) card.classList.add("mapped");
+        card.title = item.url;
+        card.addEventListener("click", () => {
+          state.selectedNew = item.id;
+          renderSelection();
+          renderNewGrid();
+        });
+        card.addEventListener("dblclick", () => openViewer(item.url, `新图链接 #${item.index} · ${item.dimension}`, item.size));
+        card.innerHTML = `
+          <div class="preview"></div>
+          <div class="cardMeta">
+            <div class="cardTop"><span>#${item.index}</span><span>${used ? "已使用" : "未使用"}</span></div>
+            <div class="cardPath">${escapeHtml(shortUrl(item.url))}</div>
+            <div class="tags">
+              <span class="tag">qpic</span>
+              ${item.dimension ? `<span class="tag">${item.dimension}</span>` : ""}
+            </div>
+          </div>
+        `;
+        card.querySelector(".preview").appendChild(makeImg(item.url));
+        fragment.appendChild(card);
+      });
+      els.newGrid.appendChild(fragment);
+      els.newCount.textContent = `${state.newItems.length} 个`;
+    }
+
+    function renderSelection() {
+      const old = state.oldItems.find(x => x.id === state.selectedOld);
+      const newer = state.newItems.find(x => x.id === state.selectedNew);
+      els.selectedOldThumb.textContent = "";
+      els.selectedNewThumb.textContent = "";
+
+      if (old) {
+        els.selectedOldThumb.appendChild(makeImg(old.url));
+        els.selectedOldText.textContent = `#${old.index} · line ${old.line} · ${old.dimension || ""} · ${old.path || "未命名结构"}`;
+      } else {
+        els.selectedOldText.textContent = "点击左侧图片";
+      }
+
+      if (newer) {
+        els.selectedNewThumb.appendChild(makeImg(newer.url));
+        els.selectedNewText.textContent = `#${newer.index} · ${newer.dimension || ""} · ${shortUrl(newer.url)}`;
+      } else {
+        els.selectedNewText.textContent = "点击右侧图片";
+      }
+    }
+
+    function renderStats() {
+      els.oldSummary.textContent = state.oldItems.length ? `已解析 ${state.oldItems.length} 个位点` : "未解析";
+      els.newSummary.textContent = state.newItems.length ? `已解析 ${state.newItems.length} 个链接` : "未解析";
+      const target = state.newItems.length || 0;
+      const paired = state.pairs.size;
+      const percent = target ? Math.min(100, Math.round((paired / target) * 100)) : 0;
+      els.progressBar.style.width = `${percent}%`;
+      if (!target) {
+        els.progressText.textContent = "载入数据后显示进度";
+      } else if (paired < target) {
+        els.progressText.textContent = `计划 ${target} 张，已配对 ${paired} 张，还差 ${target - paired} 张`;
+      } else if (paired === target) {
+        els.progressText.textContent = `计划 ${target} 张，已全部配对`;
+      } else {
+        els.progressText.textContent = `计划 ${target} 张，已配对 ${paired} 张，超出 ${paired - target} 张`;
+      }
+    }
+
+    function renderExport() {
+      els.summaryOld.textContent = state.oldItems.length;
+      els.summaryNew.textContent = state.newItems.length;
+      els.summaryPairs.textContent = state.pairs.size;
+      if (!state.output) {
+        els.replaceSummary.textContent = "点击应用替换后生成";
+      }
+    }
+
+    function pairSelected() {
+      if (!state.selectedOld || !state.selectedNew) {
+        toast("先选择左侧原图和右侧新图");
+        return;
+      }
+      state.pairs.set(state.selectedOld, state.selectedNew);
+      const oldIndex = state.oldItems.findIndex(x => x.id === state.selectedOld);
+      const newIndex = state.newItems.findIndex(x => x.id === state.selectedNew);
+      const used = new Set(state.pairs.values());
+      const nextOld = state.oldItems.slice(oldIndex + 1).find(x => !state.pairs.has(x.id));
+      const nextNew = state.newItems.slice(newIndex + 1).find(x => !used.has(x.id));
+      if (nextOld) state.selectedOld = nextOld.id;
+      if (nextNew) state.selectedNew = nextNew.id;
+      render();
+    }
+
+    function autoPairVisibleOrder() {
+      const olds = state.oldItems.filter(oldMatches).filter(x => !state.pairs.has(x.id));
+      const used = new Set(state.pairs.values());
+      const news = state.newItems.filter(newMatches).filter(x => !used.has(x.id));
+      const count = Math.min(olds.length, news.length);
+      for (let i = 0; i < count; i += 1) state.pairs.set(olds[i].id, news[i].id);
+      toast(`新增 ${count} 组配对`);
+      render();
+    }
+
+    function applyReplacement() {
+      if (!state.html) {
+        toast("还没有原 HTML");
+        return;
+      }
+      const replacements = [];
+      for (const [oldId, newId] of state.pairs.entries()) {
+        const old = state.oldItems.find(x => x.id === oldId);
+        const newer = state.newItems.find(x => x.id === newId);
+        if (!old || !newer) continue;
+        const ranges = old.ranges.length ? old.ranges : [{ start: old.start, end: old.end, rawUrl: old.rawUrl }];
+        ranges.forEach(range => {
+          replacements.push({
+            start: range.start,
+            end: range.end,
+            value: encodeForOriginalStyle(newer.url, range.rawUrl)
+          });
+        });
+      }
+      replacements.sort((a, b) => b.start - a.start);
+      let output = state.html;
+      replacements.forEach(r => {
+        output = output.slice(0, r.start) + r.value + output.slice(r.end);
+      });
+      state.output = output;
+      els.outputHtml.value = output;
+      els.replaceSummary.textContent = `已替换 ${replacements.length} 处 URL，来自 ${state.pairs.size} 组配对`;
+      els.copyBtn.disabled = false;
+      els.downloadBtn.disabled = false;
+      renderExport();
+      toast(`已生成结果：替换 ${replacements.length} 处 URL`);
+    }
+
+    function downloadOutput() {
+      const blob = new Blob([state.output], { type: "text/html;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "replaced.html";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function openViewer(url, title, size = null) {
+      viewerZoom = 1;
+      viewerSize = size;
+      els.viewerTitle.textContent = title || url;
+      els.viewerImg.src = url;
+      els.viewerImg.className = "fit";
+      els.viewerImg.style.width = "";
+      els.viewerImg.style.height = "";
+      els.viewerImg.style.minWidth = "";
+      els.viewerImg.style.minHeight = "";
+      els.viewerImg.style.transform = "";
+      els.viewer.classList.add("open");
+      els.viewer.setAttribute("aria-hidden", "false");
+    }
+
+    function closeViewer() {
+      els.viewer.classList.remove("open");
+      els.viewer.setAttribute("aria-hidden", "true");
+      els.viewerImg.removeAttribute("src");
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, ch => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
+
+    async function readFileToTextarea(input, textarea) {
+      const file = input.files?.[0];
+      if (!file) return;
+      textarea.value = await file.text();
+    }
+
+    function parseOld() {
+      state.html = els.oldHtmlInput.value;
+      state.oldItems = parseOldHtml(state.html);
+      state.pairs.clear();
+      state.selectedOld = state.oldItems[0]?.id || null;
+      state.output = "";
+      els.outputHtml.value = "";
+      els.copyBtn.disabled = true;
+      els.downloadBtn.disabled = true;
+      render();
+      toast(`已解析 ${state.oldItems.length} 个原图位点`);
+    }
+
+    function parseNew() {
+      state.newItems = parseNewLinks(els.newLinksInput.value);
+      state.pairs.clear();
+      state.selectedNew = state.newItems[0]?.id || null;
+      state.output = "";
+      els.outputHtml.value = "";
+      els.copyBtn.disabled = true;
+      els.downloadBtn.disabled = true;
+      render();
+      toast(`已解析 ${state.newItems.length} 个新图链接`);
+    }
+
+    document.getElementById("backBtn").addEventListener("click", () => setStep(Math.max(1, state.step - 1)));
+    document.getElementById("nextBtn").addEventListener("click", () => setStep(state.step === 3 ? 2 : Math.min(3, state.step + 1)));
+    document.querySelectorAll(".step").forEach(btn => btn.addEventListener("click", () => setStep(Number(btn.dataset.step))));
+    document.getElementById("parseOldBtn").addEventListener("click", parseOld);
+    document.getElementById("parseNewBtn").addEventListener("click", parseNew);
+    document.getElementById("pairBtn").addEventListener("click", pairSelected);
+    document.getElementById("autoPairBtn").addEventListener("click", autoPairVisibleOrder);
+    document.getElementById("applyBtn").addEventListener("click", applyReplacement);
+    document.getElementById("downloadBtn").addEventListener("click", downloadOutput);
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      if (!state.output) {
+        toast("还没有生成结果");
+        return;
+      }
+      await navigator.clipboard.writeText(state.output);
+      toast("已复制最新 HTML 代码");
+    });
+    document.getElementById("oldFileInput").addEventListener("change", async e => {
+      await readFileToTextarea(e.target, els.oldHtmlInput);
+      parseOld();
+    });
+    document.getElementById("newFileInput").addEventListener("change", async e => {
+      await readFileToTextarea(e.target, els.newLinksInput);
+      parseNew();
+    });
+
+    els.oldSearch.addEventListener("input", renderOldGrid);
+    els.newSearch.addEventListener("input", renderNewGrid);
+
+    document.getElementById("oldMode").addEventListener("click", e => {
+      if (!e.target.matches("button")) return;
+      state.oldMode = e.target.dataset.mode;
+      [...e.currentTarget.children].forEach(btn => btn.classList.toggle("active", btn === e.target));
+      renderOldGrid();
+    });
+
+    document.getElementById("newMode").addEventListener("click", e => {
+      if (!e.target.matches("button")) return;
+      state.newMode = e.target.dataset.mode;
+      [...e.currentTarget.children].forEach(btn => btn.classList.toggle("active", btn === e.target));
+      renderNewGrid();
+    });
+
+    document.getElementById("viewerCloseBtn").addEventListener("click", closeViewer);
+    document.getElementById("viewerFitBtn").addEventListener("click", () => {
+      viewerZoom = 1;
+      els.viewerImg.className = "fit";
+      els.viewerImg.style.width = "";
+      els.viewerImg.style.height = "";
+      els.viewerImg.style.minWidth = "";
+      els.viewerImg.style.minHeight = "";
+      els.viewerImg.style.transform = "";
+    });
+    document.getElementById("viewerActualBtn").addEventListener("click", () => {
+      viewerZoom = 1;
+      els.viewerImg.className = "actual";
+      if (viewerSize?.width) {
+        els.viewerImg.style.width = `${viewerSize.width}px`;
+        els.viewerImg.style.minWidth = `${viewerSize.width}px`;
+      }
+      if (viewerSize?.height) {
+        els.viewerImg.style.height = `${viewerSize.height}px`;
+        els.viewerImg.style.minHeight = `${viewerSize.height}px`;
+      }
+      els.viewerImg.style.transform = "";
+    });
+    document.getElementById("viewerZoomInBtn").addEventListener("click", () => {
+      els.viewerImg.className = "actual";
+      viewerZoom = Math.min(4, viewerZoom + .25);
+      els.viewerImg.style.transform = `scale(${viewerZoom})`;
+    });
+    document.getElementById("viewerZoomOutBtn").addEventListener("click", () => {
+      els.viewerImg.className = "actual";
+      viewerZoom = Math.max(.25, viewerZoom - .25);
+      els.viewerImg.style.transform = `scale(${viewerZoom})`;
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && els.viewer.classList.contains("open")) closeViewer();
+    });
+
+    setStep(1);
+  </script>
+</body>
+</html>
