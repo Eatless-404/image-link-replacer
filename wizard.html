@@ -481,12 +481,12 @@
     }
 
     .exportView {
-      grid-template-columns: 1fr 320px;
+      grid-template-columns: minmax(0, 1fr) minmax(420px, .9fr);
       gap: 1px;
       background: var(--line);
     }
 
-    .resultPane {
+    .previewPane {
       min-width: 0;
       background: var(--panel);
       padding: 16px;
@@ -495,20 +495,41 @@
       gap: 12px;
     }
 
+    .previewFrameWrap {
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .previewFrame {
+      width: min(420px, 100%);
+      height: 100%;
+      min-height: 640px;
+      border: 0;
+      background: #fff;
+    }
+
+    .resultPane {
+      min-width: 0;
+      background: var(--panel);
+      padding: 16px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 12px;
+    }
+
     .resultPane textarea {
       min-height: 0;
     }
 
-    .summaryPane {
-      background: var(--panel);
-      padding: 16px;
-      display: grid;
-      grid-template-rows: auto auto 1fr;
-      gap: 12px;
-    }
-
     .summaryStats {
       display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
 
@@ -736,17 +757,21 @@
     </section>
 
     <section class="view exportView" id="view3">
+      <div class="previewPane">
+        <div class="paneHead">
+          <h2>替换后预览</h2>
+          <span id="previewSummary">尚未生成</span>
+        </div>
+        <div class="previewFrameWrap">
+          <iframe class="previewFrame" id="previewFrame" title="替换后 HTML 预览" sandbox=""></iframe>
+        </div>
+      </div>
       <div class="resultPane">
         <div class="paneHead">
           <h2>替换后 HTML</h2>
           <span id="replaceSummary">尚未生成</span>
         </div>
         <textarea id="outputHtml" readonly spellcheck="false"></textarea>
-      </div>
-      <aside class="summaryPane">
-        <div class="paneHead">
-          <h2>导出</h2>
-        </div>
         <div class="summaryStats">
           <div class="summaryStat"><b id="summaryOld">0</b><span>原图位点</span></div>
           <div class="summaryStat"><b id="summaryNew">0</b><span>新图链接</span></div>
@@ -756,7 +781,7 @@
           <button id="copyBtn" disabled>复制最新代码</button>
           <button id="downloadBtn" disabled>下载 HTML</button>
         </div>
-      </aside>
+      </div>
     </section>
   </div>
 
@@ -814,6 +839,8 @@
       progressText: document.getElementById("progressText"),
       outputHtml: document.getElementById("outputHtml"),
       replaceSummary: document.getElementById("replaceSummary"),
+      previewSummary: document.getElementById("previewSummary"),
+      previewFrame: document.getElementById("previewFrame"),
       copyBtn: document.getElementById("copyBtn"),
       downloadBtn: document.getElementById("downloadBtn"),
       summaryOld: document.getElementById("summaryOld"),
@@ -1120,6 +1147,7 @@
       els.summaryPairs.textContent = state.pairs.size;
       if (!state.output) {
         els.replaceSummary.textContent = "进入本步时自动生成";
+        els.previewSummary.textContent = "进入本步时自动生成";
       }
     }
 
@@ -1176,6 +1204,8 @@
       state.output = output;
       els.outputHtml.value = output;
       els.replaceSummary.textContent = `已替换 ${replacements.length} 处 URL，来自 ${state.pairs.size} 组配对`;
+      els.previewSummary.textContent = `预览已更新`;
+      els.previewFrame.srcdoc = output;
       els.copyBtn.disabled = false;
       els.downloadBtn.disabled = false;
       renderExport();
@@ -1237,6 +1267,8 @@
       state.selectedOld = state.oldItems[0]?.id || null;
       state.output = "";
       els.outputHtml.value = "";
+      els.previewFrame.srcdoc = "";
+      els.previewSummary.textContent = "尚未生成";
       els.copyBtn.disabled = true;
       els.downloadBtn.disabled = true;
       render();
@@ -1249,6 +1281,8 @@
       state.selectedNew = state.newItems[0]?.id || null;
       state.output = "";
       els.outputHtml.value = "";
+      els.previewFrame.srcdoc = "";
+      els.previewSummary.textContent = "尚未生成";
       els.copyBtn.disabled = true;
       els.downloadBtn.disabled = true;
       render();
