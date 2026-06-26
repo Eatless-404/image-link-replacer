@@ -646,7 +646,7 @@
       </button>
       <button class="step" data-step="3">
         <span class="badge">3</span>
-        <span class="stepText"><strong>导出</strong><span>应用替换并复制结果</span></span>
+        <span class="stepText"><strong>导出</strong><span>复制自动生成的结果</span></span>
       </button>
     </nav>
 
@@ -659,7 +659,6 @@
         <textarea id="oldHtmlInput" spellcheck="false" placeholder="粘贴原 HTML，或上传 .html 文件"></textarea>
         <div class="importActions">
           <label class="fileLabel">上传 HTML<input id="oldFileInput" type="file" accept=".html,.htm,.txt"></label>
-          <button id="parseOldBtn">解析原图位点</button>
         </div>
       </div>
 
@@ -671,7 +670,6 @@
         <textarea id="newLinksInput" spellcheck="false" placeholder="粘贴公众号图片链接，或粘贴包含 img 的整段代码"></textarea>
         <div class="importActions">
           <label class="fileLabel">上传文本<input id="newFileInput" type="file" accept=".txt,.html,.htm"></label>
-          <button id="parseNewBtn">解析新图链接</button>
         </div>
       </div>
     </section>
@@ -755,7 +753,6 @@
           <div class="summaryStat"><b id="summaryPairs">0</b><span>已配对</span></div>
         </div>
         <div class="pairButtons">
-          <button id="applyBtn" class="primary">应用替换</button>
           <button id="copyBtn" disabled>复制最新代码</button>
           <button id="downloadBtn" disabled>下载 HTML</button>
         </div>
@@ -980,11 +977,7 @@
         el.classList.toggle("done", n < step);
       });
       document.getElementById("backBtn").disabled = step === 1;
-      document.getElementById("nextBtn").textContent = step === 1
-        ? "解析并进入配对"
-        : step === 2
-          ? "应用替换并导出"
-          : "回到配对";
+      document.getElementById("nextBtn").textContent = "下一步";
       if (step === 2) render();
       if (step === 3) renderExport();
     }
@@ -1125,7 +1118,7 @@
       els.summaryNew.textContent = state.newItems.length;
       els.summaryPairs.textContent = state.pairs.size;
       if (!state.output) {
-        els.replaceSummary.textContent = "点击应用替换后生成";
+        els.replaceSummary.textContent = "进入本步时自动生成";
       }
     }
 
@@ -1279,17 +1272,14 @@
         return;
       }
 
-      setStep(2);
+      setStep(1);
     }
 
     document.getElementById("backBtn").addEventListener("click", () => setStep(Math.max(1, state.step - 1)));
     document.getElementById("nextBtn").addEventListener("click", handleNext);
     document.querySelectorAll(".step").forEach(btn => btn.addEventListener("click", () => setStep(Number(btn.dataset.step))));
-    document.getElementById("parseOldBtn").addEventListener("click", parseOld);
-    document.getElementById("parseNewBtn").addEventListener("click", parseNew);
     document.getElementById("pairBtn").addEventListener("click", pairSelected);
     document.getElementById("autoPairBtn").addEventListener("click", autoPairVisibleOrder);
-    document.getElementById("applyBtn").addEventListener("click", applyReplacement);
     document.getElementById("downloadBtn").addEventListener("click", downloadOutput);
     document.getElementById("copyBtn").addEventListener("click", async () => {
       if (!state.output) {
