@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>图片链接替换向导 · Air</title>
+  <title>图片替换工具 · Air</title>
   <style>
     :root {
       --bg: #f6f4ef;
@@ -681,7 +681,7 @@
     .app {
       width: min(1440px, calc(100vw - 56px));
       height: calc(100vh - 44px);
-      min-width: 1120px;
+      min-width: 0;
       margin: 22px auto;
       border: 1px solid rgba(255,255,255,.8);
       border-radius: 28px;
@@ -1206,13 +1206,232 @@
       padding: 12px 16px;
       box-shadow: 0 18px 44px rgba(24,27,31,.18);
     }
+
+
+    @media (max-width: 1180px) and (min-width: 761px) {
+      .app {
+        width: calc(100vw - 24px);
+        height: calc(100vh - 24px);
+        margin: 12px;
+        border-radius: 24px;
+        grid-template-rows: 76px 72px minmax(0, 1fr);
+      }
+
+      header {
+        height: 76px;
+        padding: 16px 20px 10px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      .toolbar {
+        height: 44px;
+      }
+
+      .toolbar button {
+        height: 34px;
+        padding: 0 14px;
+      }
+
+      .steps {
+        height: 72px;
+        gap: 10px;
+        padding: 0 20px 14px;
+      }
+
+      .step {
+        padding: 0 14px;
+        gap: 10px;
+      }
+
+      .badge {
+        width: 30px;
+        height: 30px;
+      }
+
+      .importView,
+      .pairView,
+      .galleries,
+      .exportView {
+        gap: 12px;
+        padding: 0 20px 20px;
+      }
+
+      .importPane,
+      .previewPane,
+      .resultPane {
+        padding: 18px;
+      }
+
+      .pairStatus {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .pairButtons,
+      .progressBox {
+        min-height: 76px;
+      }
+
+      .exportView {
+        grid-template-columns: minmax(0, 1fr) minmax(360px, .88fr);
+      }
+
+      .filters {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .seg {
+        flex-wrap: wrap;
+      }
+    }
+
+    @media (max-width: 760px) {
+      html,
+      body {
+        min-height: 100%;
+        height: auto;
+        overflow: auto;
+      }
+
+      .app {
+        width: 100vw;
+        min-width: 0;
+        height: auto;
+        min-height: 100vh;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        overflow: visible;
+        grid-template-rows: auto auto minmax(0, 1fr);
+      }
+
+      body::before {
+        background-size: 40px 40px;
+      }
+
+      header {
+        height: auto;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 18px 16px 10px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .toolbar {
+        height: 44px;
+        padding: 4px;
+        justify-self: stretch;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .toolbar button {
+        height: 36px;
+      }
+
+      .toolbar button,
+      .toolbar .primary {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .steps {
+        height: auto;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px;
+        padding: 0 16px 12px;
+      }
+
+      .step {
+        gap: 5px;
+        min-height: 38px;
+        border-radius: 999px;
+        justify-content: center;
+        padding: 0 8px;
+        box-shadow: 0 1px 0 rgba(255,255,255,.9) inset;
+      }
+
+      .step::after {
+        inset: auto 12px 3px;
+        height: 2px;
+      }
+
+      .importView,
+      .pairView,
+      .galleries,
+      .exportView {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 0 16px 16px;
+      }
+
+      .pairStatus {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .filters {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .seg {
+        flex-wrap: wrap;
+      }
+
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+
+      .summaryStats {
+        grid-template-columns: 1fr;
+      }
+
+      .badge {
+        width: 22px;
+        height: 22px;
+        font-size: 11px;
+      }
+
+      .stepText strong {
+        font-size: 12px;
+      }
+
+      .importPane,
+      .previewPane,
+      .resultPane {
+        padding: 14px;
+        border-radius: 18px;
+      }
+
+      .selectedBox {
+        grid-template-columns: 60px minmax(0, 1fr);
+      }
+
+      .selectedThumb {
+        width: 60px;
+        height: 60px;
+      }
+
+      .imageCard {
+        height: 330px;
+        grid-template-rows: 220px 1fr;
+      }
+
+      .preview {
+        height: 220px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
       <div>
-        <h1>图片链接替换向导</h1>
+        <h1>图片替换工具</h1>
       </div>
       <div class="toolbar">
         <button id="backBtn">上一步</button>
