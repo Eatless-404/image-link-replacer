@@ -1682,7 +1682,22 @@
         const w = Math.round(Number(dataW[1]));
         return { width: w, height: Math.round(w * Number(ratio[1])) };
       }
+      const viewBox = tag.match(/\bviewbox=["']\s*[-0-9.]+\s+[-0-9.]+\s+([0-9.]+)\s+([0-9.]+)/i);
+      if (viewBox) return { width: Math.round(Number(viewBox[1])), height: Math.round(Number(viewBox[2])) };
       return { width: 0, height: 0 };
+    }
+
+    function cleanExtractedUrl(value) {
+      return decodeEntities(String(value || ""))
+        .trim()
+        .replace(/^(?:&quot;|&#39;|["'])+/, "")
+        .replace(/(?:&quot;|&#39;|["',;])+$/g, "")
+        .replace(/,$/, "");
+    }
+
+    function isImageCdnUrl(url) {
+      return /qpic\.cn|mmbiz|mmecoa|oss\.e2\.cool|e2\.cool/.test(url || "")
+        || /https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|gif|webp|svg)(?:[?#][^\s"'<>]*)?$/i.test(url || "");
     }
 
     function sizeText(size) {
@@ -1695,69 +1710,143 @@
       return parts.slice(-2).join("/");
     }
 
+    function collapseOldItems(items) {
+      const groups = new Map();
+      items.forEach(item => {
+        let group = groups.get(item.url);
+        if (!group) {
+          group = {
+            ...item,
+            ranges: [...item.ranges],
+            tagNames: new Set([item.tagName]),
+            attrs: new Set([item.attr]),
+            lines: [item.line],
+            paths: item.path ? [item.path] : [],
+            occurrenceCount: 1,
+            replacementCount: item.ranges.length
+          };
+          groups.set(item.url, group);
+          return;
+        }
+        group.ranges.push(...item.ranges);
+        group.tagNames.add(item.tagName);
+        group.attrs.add(item.attr);
+        group.lines.push(item.line);
+        if (item.path && !group.paths.includes(item.path)) group.paths.push(item.path);
+        group.occurrenceCount += 1;
+        group.replacementCount += item.ranges.length;
+        if (!group.dimension && item.dimension) {
+          group.size = item.size;
+          group.dimension = item.dimension;
+        }
+      });
+
+      return [...groups.values()].map((item, idx) => {
+        const lines = [...new Set(item.lines)].sort((a, b) => a - b);
+        const tagNames = [...item.tagNames];
+        const attrs = [...item.attrs];
+        item.id = `old-${idx + 1}`;
+        item.index = idx + 1;
+        item.line = lines[0];
+        item.linesText = item.occurrenceCount > 1 ? `line ${lines[0]} 等${item.occurrenceCount}处` : `line ${lines[0]}`;
+        item.tagName = tagNames.length === 1 ? tagNames[0] : `${tagNames.length}类标签`;
+        item.attr = attrs.length === 1 ? attrs[0] : `${attrs.length}类属性`;
+        item.path = item.paths[0] || item.path || "";
+        item.ranges.sort((a, b) => a.start - b.start);
+        delete item.tagNames;
+        delete item.attrs;
+        delete item.lines;
+        delete item.paths;
+        return item;
+      });
+    }
+
     function parseOldHtml(html) {
       const items = [];
-      const tagPattern = /<(image|img)\b[^>]*>/gi;
+      const tagPattern = /<([a-z][\w:-]*)\b[^>]*>/gi;
       let tagMatch;
       while ((tagMatch = tagPattern.exec(html))) {
         const tag = tagMatch[0];
         const tagStart = tagMatch.index;
-        const attrMatches = [...tag.matchAll(/\b(href|src|data-src)=["']([^"']+)["']/gi)];
-        const attrs = attrMatches.filter(m => /qpic\.cn|mmbiz|mmecoa/.test(m[2]));
-        if (!attrs.length) continue;
+        const grouped = new Map();
 
-        const primary = attrs.find(m => m[1].toLowerCase() === "href")
-          || attrs.find(m => m[1].toLowerCase() === "data-src")
-          || attrs[0];
-        const rawUrl = primary[2];
-        const url = decodeEntities(rawUrl);
-        const valueStart = tagStart + primary.index + primary[0].indexOf(primary[2]);
-        const ranges = attrs
-          .filter(m => decodeEntities(m[2]) === url)
-          .map(m => {
-            const start = tagStart + m.index + m[0].indexOf(m[2]);
-            return { rawUrl: m[2], start, end: start + m[2].length };
-          });
+        function addRange(rawValue, relativeStart, kind) {
+          const rawUrl = String(rawValue || "").trim();
+          const url = cleanExtractedUrl(rawUrl);
+          if (!isImageCdnUrl(url)) return;
+          const start = tagStart + relativeStart;
+          if (!grouped.has(url)) grouped.set(url, { url, kind, rawUrl, ranges: [] });
+          grouped.get(url).ranges.push({ rawUrl, start, end: start + rawUrl.length });
+        }
+
+        const attrPattern = /\b((?:xlink:)?href|src|data-src|data-lazy-bgimg)=["']([^"']+)["']/gi;
+        let attrMatch;
+        while ((attrMatch = attrPattern.exec(tag))) {
+          addRange(attrMatch[2], attrMatch.index + attrMatch[0].indexOf(attrMatch[2]), attrMatch[1].toLowerCase());
+        }
+
+        const bgPattern = /background-image\s*:\s*url\(([^)]*)\)/gi;
+        let bgMatch;
+        while ((bgMatch = bgPattern.exec(tag))) {
+          const rawInside = bgMatch[1].trim();
+          const rawUrl = rawInside
+            .replace(/^(?:&quot;|&#39;|["'])+/, "")
+            .replace(/(?:&quot;|&#39;|["'])+$/g, "");
+          const offset = bgMatch[0].indexOf(rawUrl);
+          if (offset >= 0) addRange(rawUrl, bgMatch.index + offset, "background-image");
+        }
+
+        if (!grouped.size) continue;
         const size = extractSize(tag);
-        items.push({
-          id: `old-${items.length + 1}`,
-          index: items.length + 1,
-          tagName: tagMatch[1].toLowerCase(),
-          attr: primary[1].toLowerCase(),
-          url,
-          rawUrl,
-          ranges,
-          start: valueStart,
-          end: valueStart + rawUrl.length,
-          line: lineNumberAt(html, valueStart),
-          path: nearestSectionPath(html, tagStart),
-          size,
-          dimension: sizeText(size)
-        });
+        for (const data of grouped.values()) {
+          const first = data.ranges[0];
+          items.push({
+            id: `old-${items.length + 1}`,
+            index: items.length + 1,
+            tagName: tagMatch[1].toLowerCase(),
+            attr: data.kind,
+            url: data.url,
+            rawUrl: first.rawUrl,
+            ranges: data.ranges,
+            start: first.start,
+            end: first.end,
+            line: lineNumberAt(html, first.start),
+            path: nearestSectionPath(html, tagStart),
+            size,
+            dimension: sizeText(size)
+          });
+        }
       }
-      return items;
+      return collapseOldItems(items);
     }
 
     function parseNewLinks(text) {
       const urls = [];
       const sizes = new Map();
-      const tagPattern = /<img\b[^>]*>/gi;
+      const tagPattern = /<[a-z][\w:-]*\b[^>]*>/gi;
       let tagMatch;
       while ((tagMatch = tagPattern.exec(text))) {
         const tag = tagMatch[0];
-        const src = tag.match(/\bsrc=["']([^"']+)["']/i);
-        if (!src) continue;
-        const url = decodeEntities(src[1]).replace(/,$/, "");
-        if (!/qpic\.cn|mmbiz|mmecoa/.test(url)) continue;
-        if (!urls.includes(url)) urls.push(url);
-        sizes.set(url, extractSize(tag));
+        const tagUrls = [];
+        const attrPattern = /\b((?:xlink:)?href|src|data-src|data-lazy-bgimg)=["']([^"']+)["']/gi;
+        let attrMatch;
+        while ((attrMatch = attrPattern.exec(tag))) tagUrls.push(attrMatch[2]);
+        const bgPattern = /background-image\s*:\s*url\(([^)]*)\)/gi;
+        let bgMatch;
+        while ((bgMatch = bgPattern.exec(tag))) tagUrls.push(bgMatch[1]);
+        tagUrls.forEach(raw => {
+          const url = cleanExtractedUrl(raw);
+          if (!isImageCdnUrl(url)) return;
+          if (!urls.includes(url)) urls.push(url);
+          sizes.set(url, extractSize(tag));
+        });
       }
 
       const urlPattern = /https?:\/\/[^"'<>\s)]+/g;
       let match;
       while ((match = urlPattern.exec(text))) {
-        const url = decodeEntities(match[0]).replace(/,$/, "");
-        if (!/qpic\.cn|mmbiz|mmecoa/.test(url)) continue;
+        const url = cleanExtractedUrl(match[0]);
+        if (!isImageCdnUrl(url)) continue;
         if (!urls.includes(url)) urls.push(url);
       }
 
@@ -1805,7 +1894,7 @@
       if (state.oldMode === "unmapped" && state.pairs.has(item.id)) return false;
       const q = els.oldSearch.value.trim().toLowerCase();
       if (!q) return true;
-      return [item.index, item.line, item.path, item.dimension, item.attr, item.url].join(" ").toLowerCase().includes(q);
+      return [item.index, item.line, item.linesText, item.path, item.dimension, item.attr, item.url, item.occurrenceCount, item.replacementCount].join(" ").toLowerCase().includes(q);
     }
 
     function newMatches(item) {
@@ -1831,16 +1920,17 @@
           renderSelection();
           renderOldGrid();
         });
-        card.addEventListener("dblclick", () => openViewer(item.url, `原图位点 #${item.index} · line ${item.line} · ${item.dimension}`, item.size));
+        card.addEventListener("dblclick", () => openViewer(item.url, `原图 #${item.index} · ${item.linesText || `line ${item.line}`} · ${item.occurrenceCount > 1 ? `共${item.occurrenceCount}处` : "单处"} · ${item.dimension}`, item.size));
         card.innerHTML = `
           <div class="preview"></div>
           <div class="cardMeta">
-            <div class="cardTop"><span>#${item.index}</span><span>line ${item.line}</span></div>
+            <div class="cardTop"><span>#${item.index}</span><span>${item.linesText || `line ${item.line}`}</span></div>
             <div class="cardPath">${escapeHtml(item.path || "未命名结构")}</div>
             <div class="tags">
               <span class="tag">${item.tagName}</span>
               <span class="tag">${item.attr}</span>
               ${item.dimension ? `<span class="tag">${item.dimension}</span>` : ""}
+              ${item.occurrenceCount > 1 ? `<span class="tag">共${item.occurrenceCount}处</span>` : ""}
             </div>
           </div>
         `;
@@ -1848,7 +1938,8 @@
         fragment.appendChild(card);
       });
       els.oldGrid.appendChild(fragment);
-      els.oldCount.textContent = `${state.oldItems.length} 个`;
+      const oldTotal = state.oldItems.reduce((sum, item) => sum + (item.occurrenceCount || 1), 0);
+      els.oldCount.textContent = oldTotal === state.oldItems.length ? `${state.oldItems.length} 个` : `${state.oldItems.length} 组 / ${oldTotal} 处`;
     }
 
     function renderNewGrid() {
@@ -1893,7 +1984,8 @@
 
       if (old) {
         els.selectedOldThumb.appendChild(makeImg(old.url));
-        els.selectedOldText.textContent = `#${old.index} · line ${old.line} · ${old.dimension || ""} · ${old.path || "未命名结构"}`;
+        const countText = old.occurrenceCount > 1 ? ` · 共${old.occurrenceCount}处一起替换` : "";
+        els.selectedOldText.textContent = `#${old.index} · ${old.linesText || `line ${old.line}`} · ${old.dimension || ""}${countText} · ${old.path || "未命名结构"}`;
       } else {
         els.selectedOldText.textContent = "点击左侧图片";
       }
@@ -1907,7 +1999,8 @@
     }
 
     function renderStats() {
-      els.oldSummary.textContent = state.oldItems.length ? `已解析 ${state.oldItems.length} 个位点` : "未解析";
+      const oldTotal = state.oldItems.reduce((sum, item) => sum + (item.occurrenceCount || 1), 0);
+      els.oldSummary.textContent = state.oldItems.length ? `已解析 ${state.oldItems.length} 组唯一图片 / ${oldTotal} 个位点` : "未解析";
       els.newSummary.textContent = state.newItems.length ? `已解析 ${state.newItems.length} 个链接` : "未解析";
       const target = state.newItems.length || 0;
       const paired = state.pairs.size;
